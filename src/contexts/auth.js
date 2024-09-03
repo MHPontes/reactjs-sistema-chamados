@@ -1,6 +1,9 @@
 import { useState, createContext, useEffect } from "react";
 import { auth, db } from "../services/firebaseConnection";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -14,8 +17,36 @@ function AuthProvider({ children }) {
 
   const navigate = useNavigate();
 
-  function signIn(email, password) {
-    //Logar user
+  async function signIn(email, password) {    //Função para logar o usuário no sistema 
+    setLoadingAuth(true);
+
+    await signInWithEmailAndPassword(auth, email, password)
+      .then(async (value) => {
+        let uid = value.user.uid;
+
+        const docRef = doc(db, "users", uid);    //Referência do documento do user logado
+        const docSnap = await getDoc(docRef);    //Pegando o documento do user logado no banco de dados
+
+        if (docSnap.exists()) {
+          let data = {
+            uid: uid,
+            name: docSnap.data().name,
+            email: value.user.email,
+            avatarUrl: docSnap.data().avatarUrl,
+          };
+
+          setUser(data);
+          storageUser(data);
+          setLoadingAuth(false);
+          toast.success("Bem-vindo de volta!");
+          navigate("/dashboard");
+        }
+      })
+      .catch((error) => {
+        console.log(error);
+        setLoadingAuth(false);
+        toast.error("Ops, algo deu errado!");
+      });
   }
 
   //Cadastrar novo user
@@ -61,7 +92,7 @@ function AuthProvider({ children }) {
   return (
     <AuthContext.Provider
       value={{
-        signed: !!user, //Se tiver usuário logado, signed é true
+        signed: !!user, //Se tiver usuário logado, signed é true  !! = se tiver algo, retorne true
         user,
         signIn,
         signUp,

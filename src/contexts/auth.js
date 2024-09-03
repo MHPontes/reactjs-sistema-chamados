@@ -3,6 +3,7 @@ import { auth, db } from "../services/firebaseConnection";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signOut
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
@@ -14,8 +15,23 @@ function AuthProvider({ children }) {
   //Componente que irá prover o contexto de autenticação para todos os componentes
   const [user, setUser] = useState(null); //Estado para armazenar o usuário logado
   const [loadingAuth, setLoadingAuth] = useState(false); //Estado para verificar se está carregando a autenticação
+  const [loading, setLoading] = useState(true); //Estado para verificar se está carregando a página
 
   const navigate = useNavigate();
+
+  useEffect(() => {      //Função para verificar se tem usuário logado no localStorage ao carregar a página
+    async function loadUser() {
+      const storageUser = localStorage.getItem("@ticketsPRO"); //Pegando os dados do user no localStorage
+
+      if (storageUser) {
+        setUser(JSON.parse(storageUser)); //Setando os dados do user no estado user convertendo de string para objeto
+        setLoading(false); //Setando o estado de carregamento para falso pois a página já carregou
+      }
+
+      setLoading(false);    //Setando o estado de carregamento para falso pois a página já carregou pois o if acima não foi executado
+    }
+    loadUser();
+  }, []);
 
   async function signIn(email, password) {    //Função para logar o usuário no sistema 
     setLoadingAuth(true);
@@ -89,6 +105,13 @@ function AuthProvider({ children }) {
     localStorage.setItem("@ticketsPRO", JSON.stringify(data)); //Armazenando os dados do user no localStorage
   }
 
+  async function logout() {
+    await signOut(auth); //Função para fazer logout do usuário
+    localStorage.removeItem("@ticketsPRO"); //Removendo os dados do user do localStorage
+    setUser(null); //Setando o estado user para nulo
+ 
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -96,7 +119,9 @@ function AuthProvider({ children }) {
         user,
         signIn,
         signUp,
+        logout,
         loadingAuth,
+        loading
       }}
     >
       {children}
